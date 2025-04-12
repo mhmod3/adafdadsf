@@ -1,8 +1,12 @@
 {
-  "rewrites": [
+  "headers": [
     {
-      "source": "(.*)",
-      "destination": "/api"
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://mhmod3.github.io" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
     }
   ]
 }
