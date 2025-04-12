@@ -28,12 +28,31 @@ const ANIWATCH_API_HOSTNAME = process.env?.ANIWATCH_API_HOSTNAME;
 const app = new Hono<{ Variables: AniwatchAPIVariables }>();
 
 app.use(logger());
+
+// ✅ التحقق من أن الطلب قادم من موقعك فقط
+app.use("*", async (c, next) => {
+  const allowedOrigin = "https://mhmod3.github.io/IIIAnime/";
+  const origin = c.req.header("origin") || c.req.header("referer");
+
+  if (!origin || !origin.startsWith(allowedOrigin)) {
+    return c.json({ error: "🚫 Access Denied: Unauthorized origin." }, 403);
+  }
+
+  c.header("Access-Control-Allow-Origin", "https://mhmod3.github.io");
+  c.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  c.header("Access-Control-Allow-Headers", "Content-Type");
+
+  if (c.req.method === "OPTIONS") {
+    return c.body(null, 200);
+  }
+
+  await next();
+});
+
 app.use(corsConfig);
 app.use(cacheControlMiddleware);
 
-// CAUTION: For personal deployments, "refrain" from having an env
-// named "ANIWATCH_API_HOSTNAME". You may face rate limitting
-// or other issues if you do.
+// حماية إضافية للحالات التي ليست للنشر الشخصي
 const ISNT_PERSONAL_DEPLOYMENT = Boolean(ANIWATCH_API_HOSTNAME);
 if (ISNT_PERSONAL_DEPLOYMENT) {
   app.use(ratelimit);
@@ -57,7 +76,7 @@ app
 app.notFound(notFoundHandler);
 app.onError(errorHandler);
 
-// NOTE: this env is "required" for vercel deployments
+// للتشغيل المحلي (ليس Vercel)
 if (!Boolean(process.env?.ANIWATCH_API_VERCEL_DEPLOYMENT)) {
   serve({
     port: PORT,
@@ -68,11 +87,8 @@ if (!Boolean(process.env?.ANIWATCH_API_VERCEL_DEPLOYMENT)) {
     )
   );
 
-  // NOTE: remove the `if` block below for personal deployments
   if (ISNT_PERSONAL_DEPLOYMENT) {
     const interval = 9 * 60 * 1000; // 9mins
-
-    // don't sleep
     setInterval(() => {
       console.log("aniwatch-api HEALTH_CHECK at", new Date().toISOString());
       https
